@@ -36,6 +36,28 @@ def init_db() -> None:
     typer.echo(f"Initialized {s.sqlite_path}")
 
 
+@app.command("kite-login-url")
+def kite_login_url() -> None:
+    """Print the official Zerodha login URL for today's Kite session."""
+    s = get_settings()
+    typer.echo(login_url(s.kite_api_key))
+
+
+@app.command("kite-exchange-token")
+def kite_exchange_token(request_token: str) -> None:
+    """Exchange the short-lived redirect request_token for today's access token.
+
+    The API secret stays local in .env. The returned access token is intentionally
+    printed only to the local terminal; do not paste it into GitHub or chat.
+    """
+    s = get_settings()
+    session = exchange_request_token(s.kite_api_key, s.kite_api_secret, request_token)
+    access_token = session.get("access_token")
+    if not access_token:
+        raise typer.BadParameter("Kite did not return an access_token")
+    typer.echo("KITE_ACCESS_TOKEN=" + access_token)
+
+
 @app.command("analyze-csv")
 def analyze_csv(path: Path, min_score: float = 72.0) -> None:
     s = get_settings()
