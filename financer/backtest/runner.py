@@ -85,17 +85,19 @@ class BacktestRunner:
                 current_day = day
                 realized_today = 0.0
 
-            # Existing position experiences the next bar before a new decision can occupy it.
-            just_closed = broker.mark_bar(
-                pd.Timestamp(next_ts).to_pydatetime(),
-                float(next_bar["high"]),
-                float(next_bar["low"]),
-            )
-            for t in just_closed:
-                equity += t.pnl
-                realized_today += t.pnl
-
-            if broker.open_trades:
+            # If a position was already open before next_bar started, the strategy cannot
+            # also claim a new fill at next_bar's open even if that old trade exits later
+            # inside the same candle.
+            had_open_before_next_bar = bool(broker.open_trades)
+            if had_open_before_next_bar:
+                just_closed = broker.mark_bar(
+                    pd.Timestamp(next_ts).to_pydatetime(),
+                    float(next_bar["high"]),
+                    float(next_bar["low"]),
+                )
+                for t in just_closed:
+                    equity += t.pnl
+                    realized_today += t.pnl
                 continue
 
             window = df.iloc[: i + 1]
@@ -122,9 +124,10 @@ class BacktestRunner:
             if not risk.allowed:
                 continue
 
-            trade = broker.open(repriced, risk.quantity, accepted.score.final)
+            broker.open(repriced, risk.quantity, accepted.score.final)
 
-            # The entry occurs at next_bar open; high/low after the open can hit stop/target.
+            # Entry occurs at next_bar open. The bar's high/low are then eligible to hit
+            # stop/target. If both occur, PaperBroker deliberately assumes stop first.
             immediate = broker.mark_bar(
                 pd.Timestamp(next_ts).to_pydatetime(),
                 float(next_bar["high"]),
