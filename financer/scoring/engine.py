@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from financer.models import Regime, ScoreBreakdown, StrategySignal
+from financer.models import Regime, ScoreBreakdown, Side, StrategySignal
 
 
 @dataclass(slots=True)
 class ContextScores:
+    # 0-100 directional scores. Above 50 means USD-bullish; below 50 means USD-bearish.
     macro: float = 50.0
     global_fx: float = 50.0
     news_safety: float = 50.0
@@ -44,13 +45,25 @@ class ScoringEngine:
             raise ValueError("profile must be 'full' or 'core_backtest'")
         self.profile = profile
 
+    @staticmethod
+    def _align_direction(score: float, side: Side) -> float:
+        score = max(0.0, min(100.0, float(score)))
+        if side == Side.LONG:
+            return score
+        if side == Side.SHORT:
+            return 100.0 - score
+        return 50.0
+
     def score(self, signal: StrategySignal, regime: Regime, context: ContextScores) -> ScoreBreakdown:
         regime_score = float(REGIME_FIT.get(regime, {}).get(signal.strategy, 40.0))
+        macro_aligned = self._align_direction(context.macro, signal.side)
+        global_aligned = self._align_direction(context.global_fx, signal.side)
+
         components = {
             "technical": signal.technical_score,
             "regime": regime_score,
-            "macro": context.macro,
-            "global_fx": context.global_fx,
+            "macro": macro_aligned,
+            "global_fx": global_aligned,
             "news_safety": context.news_safety,
             "liquidity": context.liquidity,
         }
@@ -60,8 +73,8 @@ class ScoringEngine:
         return ScoreBreakdown(
             technical=round(signal.technical_score, 2),
             regime=round(regime_score, 2),
-            macro=round(context.macro, 2),
-            global_fx=round(context.global_fx, 2),
+            macro=round(macro_aligned, 2),
+            global_fx=round(global_aligned, 2),
             news_safety=round(context.news_safety, 2),
             liquidity=round(context.liquidity, 2),
             skeptic_penalty=round(context.skeptic_penalty, 2),
