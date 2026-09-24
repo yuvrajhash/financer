@@ -13,11 +13,16 @@ from financer.strategies import DEFAULT_STRATEGIES
 
 
 class FinancerEngine:
-    def __init__(self, settings: Settings, min_score: float = 72.0):
+    def __init__(
+        self,
+        settings: Settings,
+        min_score: float = 72.0,
+        scoring_profile: str = "full",
+    ):
         self.s = settings
         self.min_score = min_score
         self.detector = RegimeDetector()
-        self.scorer = ScoringEngine()
+        self.scorer = ScoringEngine(profile=scoring_profile)
         self.risk = RiskManager(settings)
         self.ai = AIResearchReviewer(settings)
         self.strategies = DEFAULT_STRATEGIES
