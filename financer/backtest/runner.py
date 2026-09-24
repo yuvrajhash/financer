@@ -37,7 +37,7 @@ class BacktestRunner:
         warmup_bars: int = 120,
     ):
         self.s = settings
-        self.engine = FinancerEngine(settings, min_score=min_score)
+        self.engine = FinancerEngine(settings, min_score=min_score, scoring_profile="core_backtest")
         self.risk = RiskManager(settings)
         self.warmup_bars = warmup_bars
 
