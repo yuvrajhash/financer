@@ -19,9 +19,15 @@ The first market is **USDINR futures**. Zerodha/Kite is used as the intended NSE
 2. Breakout + retest / expansion
 3. Mean reversion (range regimes only)
 
-## 15-session validation
+## Historical-data reality
 
-V0 is a **go/no-go experiment**, not proof of a permanent edge. See `docs/VALIDATION_PLAN.md`.
+Kite supports intraday history for live instruments, but expired futures do **not** have intraday continuous candles. FINANCER therefore separates:
+
+- **actual NSE USDINR futures history** from the live contract;
+- **forward data we archive ourselves** every day; and
+- optional **USD/INR spot proxy history** for research only.
+
+Proxy results are never treated as executable futures performance.
 
 ## Quick start
 
@@ -34,6 +40,28 @@ python -m financer.cli init-db
 python scripts/smoke_demo.py
 pytest
 ```
+
+## Historical backtest workflow
+
+After adding your API credentials to `.env`:
+
+```bash
+# nearest live USDINR futures contract, actual Kite data
+financer fetch-kite-usdinr --days 90
+
+# causal backtest: signal at one bar close, entry at next bar open
+financer backtest-csv data/usdinr_current_5m.csv
+
+# optional spot proxy research
+financer fetch-spot-usdinr
+financer backtest-csv data/usdinr_spot_proxy_5m.csv --source-label spot-proxy-usdinr
+```
+
+The backtester includes configured slippage/cost assumptions and conservatively counts the stop first if stop and target are both inside the same OHLC bar.
+
+## 15-session validation
+
+V0 is a **go/no-go experiment**, not proof of a permanent edge. See `docs/VALIDATION_PLAN.md`.
 
 ## Credentials
 
