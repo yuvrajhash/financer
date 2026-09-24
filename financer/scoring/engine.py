@@ -25,7 +25,7 @@ REGIME_FIT = {
 
 
 class ScoringEngine:
-    weights = {
+    FULL_WEIGHTS = {
         "technical": 0.30,
         "regime": 0.20,
         "macro": 0.12,
@@ -33,6 +33,16 @@ class ScoringEngine:
         "news_safety": 0.14,
         "liquidity": 0.12,
     }
+    CORE_BACKTEST_WEIGHTS = {
+        "technical": 0.50,
+        "regime": 0.40,
+        "liquidity": 0.10,
+    }
+
+    def __init__(self, profile: str = "full"):
+        if profile not in {"full", "core_backtest"}:
+            raise ValueError("profile must be 'full' or 'core_backtest'")
+        self.profile = profile
 
     def score(self, signal: StrategySignal, regime: Regime, context: ContextScores) -> ScoreBreakdown:
         regime_score = float(REGIME_FIT.get(regime, {}).get(signal.strategy, 40.0))
@@ -44,7 +54,8 @@ class ScoringEngine:
             "news_safety": context.news_safety,
             "liquidity": context.liquidity,
         }
-        raw = sum(components[k] * self.weights[k] for k in self.weights)
+        weights = self.FULL_WEIGHTS if self.profile == "full" else self.CORE_BACKTEST_WEIGHTS
+        raw = sum(components[k] * weights[k] for k in weights)
         final = max(0.0, min(100.0, raw - context.skeptic_penalty))
         return ScoreBreakdown(
             technical=round(signal.technical_score, 2),
